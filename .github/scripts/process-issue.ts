@@ -18,7 +18,7 @@ interface FileChange {
 
 async function setupGemini() {
   const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
-  return genAI.getGenerativeModel({ model: 'gemini-pro' });
+  return genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 }
 
 async function getIssueContent(): Promise<{ title: string; body: string; number: number }> {
