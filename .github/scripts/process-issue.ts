@@ -37,7 +37,6 @@ function createBranchName(issueNumber: number): string {
 }
 
 async function parseGeminiResponse(response: string): Promise<FileChange[]> {
-  // This is a simple parser - you might want to make it more robust
   const changes: FileChange[] = [];
   const fileBlocks = response.split('```').filter((_, i) => i % 2 === 1);
 
@@ -45,12 +44,18 @@ async function parseGeminiResponse(response: string): Promise<FileChange[]> {
     const lines = block.split('\n');
     const firstLine = lines[0];
 
-    // Look for language:filepath pattern (e.g., "typescript:src/App.tsx" or "ts:src/App.tsx")
-    const match = firstLine.match(/^(?:\w+:)?(.+)$/);
-    if (match) {
-      const filePath = match[1].trim();
-      const content = lines.slice(1).join('\n');
-      changes.push({ path: filePath, content });
+    // First try to get the path from the first non-empty line
+    const path = lines.find(line => line.trim() && !line.startsWith('```'))?.trim();
+    if (!path) continue;
+
+    // Remove the path line and any language identifier
+    const content = lines
+      .filter(line => line !== path && !line.match(/^(typescript|javascript|tsx?|jsx?):?$/))
+      .join('\n')
+      .trim();
+
+    if (path) {
+      changes.push({ path, content });
     }
   }
 
