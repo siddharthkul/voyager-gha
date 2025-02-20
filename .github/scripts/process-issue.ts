@@ -73,10 +73,24 @@ async function main() {
       Title: ${title}
       Description: ${body}
       
+      First, analyze the current file content before suggesting changes.
+      Only modify the specific parts that need to change while preserving:
+      - All existing imports
+      - Component structure
+      - Existing functionality
+      - File organization
+      
       Provide specific file changes that should be made to address this issue.
       Format your response using markdown code blocks with the file path in the first line.
       IMPORTANT: Provide the complete file content, not just the changed parts.
       Do not use ellipsis (...) or placeholders like "remaining code".
+      
+      Before making changes:
+      1. Identify the minimal set of changes needed
+      2. Keep existing code structure and style
+      3. Only modify values/logic that directly relate to the issue
+      4. Preserve all existing imports and dependencies
+      
       Example:
       \`\`\`typescript:src/components/Example.tsx
       import React from 'react';
@@ -91,6 +105,7 @@ async function main() {
       Focus on React components, TypeScript types, and related frontend code.
       Be specific about file paths and ensure they match the typical Vite + React project structure.
       Always include all imports and the complete file contents.
+      Make minimal, focused changes that address only what's requested in the issue.
     `;
 
     const result = await model.generateContent(prompt);
