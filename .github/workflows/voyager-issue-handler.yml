@@ -2,7 +2,7 @@ name: Voyager Issue Handler
 
 on:
   issues:
-    types: [opened, labeled]
+    types: [labeled]
 
 jobs:
   handle-voyager-issue:
