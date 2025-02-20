@@ -1,0 +1,31 @@
+name: Voyager Issue Handler
+
+on:
+  issues:
+    types: [opened, labeled]
+
+jobs:
+  handle-voyager-issue:
+    if: contains(github.event.issue.labels.*.name, 'voyager')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Process Issue and Create PR
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: node .github/scripts/process-issue.js 
