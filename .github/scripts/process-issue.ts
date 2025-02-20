@@ -32,7 +32,8 @@ async function getIssueContent(): Promise<{ title: string; body: string; number:
 }
 
 function createBranchName(issueNumber: number): string {
-  return `voyager/issue-${issueNumber}`;
+  const timestamp = new Date().getTime();
+  return `voyager/issue-${issueNumber}-${timestamp}`;
 }
 
 async function parseGeminiResponse(response: string): Promise<FileChange[]> {
