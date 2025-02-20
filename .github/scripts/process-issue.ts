@@ -74,13 +74,22 @@ async function main() {
       
       Provide specific file changes that should be made to address this issue.
       Format your response using markdown code blocks with the file path in the first line.
+      IMPORTANT: Provide the complete file content, not just the changed parts.
+      Do not use ellipsis (...) or placeholders like "remaining code".
       Example:
       \`\`\`typescript:src/components/Example.tsx
-      // code here
+      import React from 'react';
+      
+      export const Example = () => {
+        return <div>Complete component code here</div>;
+      };
+      
+      export default Example;
       \`\`\`
       
       Focus on React components, TypeScript types, and related frontend code.
       Be specific about file paths and ensure they match the typical Vite + React project structure.
+      Always include all imports and the complete file contents.
     `;
 
     const result = await model.generateContent(prompt);
