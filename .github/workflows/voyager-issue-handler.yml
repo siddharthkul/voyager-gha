@@ -28,4 +28,4 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-        run: node .github/scripts/process-issue.js 
+        run: npx tsx .github/scripts/process-issue.ts 
