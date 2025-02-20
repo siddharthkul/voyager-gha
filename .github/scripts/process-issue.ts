@@ -37,20 +37,39 @@ function createBranchName(issueNumber: number): string {
 }
 
 async function parseGeminiResponse(response: string): Promise<FileChange[]> {
-  // This is a simple parser - you might want to make it more robust
   const changes: FileChange[] = [];
   const fileBlocks = response.split('```').filter((_, i) => i % 2 === 1);
 
   for (const block of fileBlocks) {
     const lines = block.split('\n');
-    const firstLine = lines[0];
+    // Try to find the file path
+    let path = '';
+    let content = '';
 
-    // Look for language:filepath pattern (e.g., "typescript:src/App.tsx" or "ts:src/App.tsx")
-    const match = firstLine.match(/^(?:\w+:)?(.+)$/);
-    if (match) {
-      const filePath = match[1].trim();
-      const content = lines.slice(1).join('\n');
-      changes.push({ path: filePath, content });
+    // Check for language:filepath pattern first
+    const firstLine = lines[0].trim();
+    const langPathMatch = firstLine.match(/^(?:typescript|javascript|tsx?|jsx?):(.+)$/);
+    if (langPathMatch) {
+      path = langPathMatch[1].trim();
+      content = lines.slice(1).join('\n');
+    } else {
+      // If no language:filepath pattern, look for the path in the first non-empty line
+      const pathLine = lines.find(line =>
+        line.trim() &&
+        !line.startsWith('```') &&
+        (line.includes('/') || line.endsWith('.tsx') || line.endsWith('.ts'))
+      );
+      if (pathLine) {
+        path = pathLine.trim();
+        content = lines
+          .filter(line => line !== pathLine && !line.match(/^(typescript|javascript|tsx?|jsx?):?$/))
+          .join('\n')
+          .trim();
+      }
+    }
+
+    if (path && content) {
+      changes.push({ path, content });
     }
   }
 
@@ -73,25 +92,48 @@ async function main() {
       Title: ${title}
       Description: ${body}
       
+      CRITICAL INSTRUCTIONS:
+      1. Only modify the specific values or code mentioned in the issue
+      2. Do not change file structure or delete any files
+      3. Do not modify CSS files unless specifically requested
+      4. Keep all existing imports and functionality
+      5. Make minimal, focused changes
+      
       Provide specific file changes that should be made to address this issue.
-      Format your response using markdown code blocks with the file path in the first line.
-      IMPORTANT: Provide the complete file content, not just the changed parts.
-      Do not use ellipsis (...) or placeholders like "remaining code".
-      Example:
-      \`\`\`typescript:src/components/Example.tsx
-      import React from 'react';
+      Format your response using markdown code blocks. Each block MUST start with the file path on its own line, like this:
       
-      export const Example = () => {
-        return <div>Complete component code here</div>;
-      };
-      
-      export default Example;
+      \`\`\`typescript
+      src/App.tsx
+      // file content here
       \`\`\`
+      
+      IMPORTANT: Provide the complete file content, not just the changed parts.
+      Do not:
+      - Remove any imports
+      - Change component structure
+      - Delete any files
+      - Modify styles unless requested
+      - Add new features unless requested
       
       Focus on React components, TypeScript types, and related frontend code.
       Be specific about file paths and ensure they match the typical Vite + React project structure.
       Always include all imports and the complete file contents.
+      The file path must be a valid path like 'src/App.tsx' or 'src/components/Counter.tsx'.
+      
+      If you're unsure about any part of the existing code, preserve it as-is.
     `;
+
+    // Validate file changes before applying them
+    function validateFileChanges(changes: FileChange[]): FileChange[] {
+      return changes.filter(change => {
+        // Don't allow CSS changes unless specifically mentioned in the issue
+        if (change.path.endsWith('.css') && !body.toLowerCase().includes('css')) {
+          console.log(`Skipping CSS file change for ${change.path} as it wasn't requested`);
+          return false;
+        }
+        return true;
+      });
+    }
 
     const result = await model.generateContent(prompt);
     const suggestedChanges = result.response.text();
@@ -116,7 +158,7 @@ async function main() {
     });
 
     // Parse and apply changes
-    const fileChanges = await parseGeminiResponse(suggestedChanges);
+    const fileChanges = validateFileChanges(await parseGeminiResponse(suggestedChanges));
 
     for (const change of fileChanges) {
       try {
