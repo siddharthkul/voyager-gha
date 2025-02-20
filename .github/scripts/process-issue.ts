@@ -37,20 +37,39 @@ function createBranchName(issueNumber: number): string {
 }
 
 async function parseGeminiResponse(response: string): Promise<FileChange[]> {
-  // This is a simple parser - you might want to make it more robust
   const changes: FileChange[] = [];
   const fileBlocks = response.split('```').filter((_, i) => i % 2 === 1);
 
   for (const block of fileBlocks) {
     const lines = block.split('\n');
-    const firstLine = lines[0];
+    // Try to find the file path
+    let path = '';
+    let content = '';
 
-    // Look for language:filepath pattern (e.g., "typescript:src/App.tsx" or "ts:src/App.tsx")
-    const match = firstLine.match(/^(?:\w+:)?(.+)$/);
-    if (match) {
-      const filePath = match[1].trim();
-      const content = lines.slice(1).join('\n');
-      changes.push({ path: filePath, content });
+    // Check for language:filepath pattern first
+    const firstLine = lines[0].trim();
+    const langPathMatch = firstLine.match(/^(?:typescript|javascript|tsx?|jsx?):(.+)$/);
+    if (langPathMatch) {
+      path = langPathMatch[1].trim();
+      content = lines.slice(1).join('\n');
+    } else {
+      // If no language:filepath pattern, look for the path in the first non-empty line
+      const pathLine = lines.find(line =>
+        line.trim() &&
+        !line.startsWith('```') &&
+        (line.includes('/') || line.endsWith('.tsx') || line.endsWith('.ts'))
+      );
+      if (pathLine) {
+        path = pathLine.trim();
+        content = lines
+          .filter(line => line !== pathLine && !line.match(/^(typescript|javascript|tsx?|jsx?):?$/))
+          .join('\n')
+          .trim();
+      }
+    }
+
+    if (path && content) {
+      changes.push({ path, content });
     }
   }
 
@@ -74,23 +93,20 @@ async function main() {
       Description: ${body}
       
       Provide specific file changes that should be made to address this issue.
-      Format your response using markdown code blocks with the file path in the first line.
+      Format your response using markdown code blocks. Each block MUST start with the file path on its own line, like this:
+      
+      \`\`\`typescript
+      src/App.tsx
+      // file content here
+      \`\`\`
+      
       IMPORTANT: Provide the complete file content, not just the changed parts.
       Do not use ellipsis (...) or placeholders like "remaining code".
-      Example:
-      \`\`\`typescript:src/components/Example.tsx
-      import React from 'react';
-      
-      export const Example = () => {
-        return <div>Complete component code here</div>;
-      };
-      
-      export default Example;
-      \`\`\`
       
       Focus on React components, TypeScript types, and related frontend code.
       Be specific about file paths and ensure they match the typical Vite + React project structure.
       Always include all imports and the complete file contents.
+      The file path must be a valid path like 'src/App.tsx' or 'src/components/Counter.tsx'.
     `;
 
     const result = await model.generateContent(prompt);
